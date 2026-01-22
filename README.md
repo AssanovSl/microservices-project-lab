@@ -23,7 +23,8 @@
 ## Структура проекта ##
 - `report.md` - подробный отчёт проделенной работы с командами и скриншотами.  
 - `services/` - исходные микросервисы + Dockerfile.  
-- `scripts/` - Bash-скрипты для установки Docker и инициализации Swarm.  
+- `scripts/` - Bash-скрипты для установки Docker и инициализации Swarm.
+- `ansible/` - файлы для использования автоматизации с использованием Ansible.  
 - `docker-compose.yaml` - Стэк микросервисов.  
 - `docker-compose-proxy.yaml` - Nginx прокси.
 - `docker-compose-portainer.yaml` - Стэк Portainer в Swarm.  
