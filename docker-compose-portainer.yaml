@@ -1,0 +1,32 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:alpine
+    command: -H tcp://tasks.agent:9001 --tlsskipverify
+    ports:
+      - "9000:9000"
+    networks:
+      - portainer_agent 
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+
+  agent:
+    image: portainer/agent:alpine
+    environment:
+      AGENT_CLUSTER_ADDR: tasks.agent
+    volumes: 
+      - /var/run/docker.sock:/var/run/docker.sock # агент получает привилегированный доступ к локальному Docker Engine
+      - /var/lib/docker/volumes:/var/lib/docker/volumes # агент может листать/удалять/копировать содержимое томов
+    networks:
+      - portainer_agent
+    deploy:
+      mode: global
+
+
+networks:
+  portainer_agent:
+    driver: overlay
+    attachable: true 
+
