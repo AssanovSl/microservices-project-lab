@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: dorothag/database:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "postgres"
+    expose:
+      - "5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    expose:
+      - "5672"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  session-service:
+    image: dorothag/session-service:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: users_db
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  hotel-service:
+    image: dorothag/hotel-service:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: hotels_db
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+    expose:
+      - "8082"
+    restart: unless-stopped
+  payment-service:
+    image: dorothag/payment-service:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: payments_db
+      JAVA_OPTS: "-Xms128m -Xmx512m"
+    expose:
+      - "8084"
+    restart: unless-stopped
+
+  loyalty-service:
+    image: dorothag/loyalty-service:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: balances_db
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+    expose:
+      - "8085"
+    restart: unless-stopped
+
+  report-service:
+    image: dorothag/report-service:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: statistics_db
+      RABBIT_MQ_HOST: rabbitmq
+      RABBIT_MQ_PORT: 5672
+      RABBIT_MQ_USER: guest
+      RABBIT_MQ_PASSWORD: guest
+      RABBIT_MQ_QUEUE_NAME: messagequeue
+      RABBIT_MQ_EXCHANGE: messagequeue-exchange
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+    expose:
+      - "8086"
+    restart: unless-stopped
+
+  booking-service:
+    image: dorothag/booking-service:latest
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: reservations_db
+      RABBIT_MQ_HOST: rabbitmq
+      RABBIT_MQ_PORT: 5672
+      RABBIT_MQ_USER: guest
+      RABBIT_MQ_PASSWORD: guest
+      RABBIT_MQ_QUEUE_NAME: messagequeue
+      RABBIT_MQ_EXCHANGE: messagequeue-exchange
+      HOTEL_SERVICE_HOST: hotel-service
+      HOTEL_SERVICE_PORT: 8082
+      PAYMENT_SERVICE_HOST: payment-service
+      PAYMENT_SERVICE_PORT: 8084
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT: 8085
+      JAVA_OPTS: "-Xms64m -Xmx256m"
+    expose:
+      - "8083"
+    restart: unless-stopped
+
+  gateway-service:
+    image: dorothag/gateway-service:latest
+    environment:
+      SESSION_SERVICE_HOST: session-service
+      SESSION_SERVICE_PORT: 8081
+      HOTEL_SERVICE_HOST: hotel-service
+      HOTEL_SERVICE_PORT: 8082
+      BOOKING_SERVICE_HOST: booking-service
+      BOOKING_SERVICE_PORT: 8083
+      PAYMENT_SERVICE_HOST: payment-service
+      PAYMENT_SERVICE_PORT: 8084
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT: 8085
+      REPORT_SERVICE_HOST: report-service
+      REPORT_SERVICE_PORT: 8086
+      JAVA_OPTS: "-Xms128m -Xmx512m"
+    ports:
+      - "8087:8087"
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge

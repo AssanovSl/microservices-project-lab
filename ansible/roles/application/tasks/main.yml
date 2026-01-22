@@ -1,0 +1,69 @@
+# roles/application/tasks/main.yml
+
+---
+- name: Update system
+  apt:
+    update_cache: yes
+
+- name: Docker install
+  apt:
+    name: docker.io
+    state: present
+
+- name: Docker compose install
+  apt:
+    name: docker-compose
+    state: present
+
+- name: Wait for docker group to exist
+  wait_for:
+    path: /etc/group
+    search_regex: "^docker:"
+    timeout: 30
+
+- name: Add vagrant to docker group
+  user:
+    name: vagrant
+    groups: docker
+    append: yes
+
+- name: Create app directory
+  file:
+    path: /home/vagrant/app
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: '0755'
+
+- name: Copy docker-compose file from role
+  copy:
+    src: docker-compose.yaml  # docker-compose.yaml из roles/application/files/
+    dest: /home/vagrant/app/docker-compose.yaml
+    owner: vagrant
+    group: vagrant
+    mode: '0644'
+
+- name: Pull base images
+  command: docker-compose -f docker-compose.yaml pull
+  args:
+    chdir: /home/vagrant/app
+  register: pull_result
+
+- name: Start containers
+  command: docker-compose -f docker-compose.yaml up -d
+  args:
+    chdir: /home/vagrant/app
+  register: up_result
+
+- name: Wait for containers to start
+  pause:
+    seconds: 60
+
+- name: Check containers status
+  command: docker ps
+  register: containers
+  changed_when: false
+
+- name: Show running containers
+  debug:
+    msg: "{{ containers.stdout_lines }}"
